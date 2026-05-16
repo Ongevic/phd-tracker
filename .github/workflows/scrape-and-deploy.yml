@@ -1,0 +1,77 @@
+name: Scrape PhD Positions & Deploy
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright requests
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run scraper
+        run: python scraper/scrape.py
+        continue-on-error: true
+
+      - name: Show output (debug)
+        run: |
+          echo "=== positions.json preview ==="
+          head -50 data/positions.json || echo "File not found or empty"
+
+      - name: Commit updated data
+        run: |
+          git config --global user.name "PhD Tracker Bot"
+          git config --global user.email "bot@github-actions"
+          git add data/positions.json
+          git diff --cached --quiet || git commit -m "🤖 Update PhD positions [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: scrape
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

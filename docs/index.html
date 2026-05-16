@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhD Tracker — Political Science & IR in Europe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Source+Sans+3:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f5f0;
+      --surface: #ffffff;
+      --border: #e2ddd6;
+      --text: #1a1714;
+      --muted: #6b6460;
+      --accent: #2d5a8e;
+      --accent-light: #e8f0f9;
+      --tag-bg: #f0ede8;
+      --italy: #c8323b;
+      --italy-bg: #fdf0f0;
+      --deadline-warn: #b85c00;
+      --deadline-warn-bg: #fff4e8;
+      --deadline-ok: #2a7a4b;
+      --deadline-ok-bg: #eef7f2;
+      --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 400;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .site-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.7rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .site-subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+      font-weight: 300;
+    }
+    .last-updated {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: var(--tag-bg);
+      padding: 0.3rem 0.7rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      box-shadow: var(--shadow);
+    }
+    .search-wrap {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 0.8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+    input[type="search"] {
+      width: 100%;
+      padding: 0.55rem 0.8rem 0.55rem 2.4rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 0.9rem;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="search"]:focus { border-color: var(--accent); }
+
+    select {
+      padding: 0.55rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 0.9rem;
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: var(--accent); }
+
+    .count-badge {
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+      margin-left: auto;
+    }
+    .count-badge strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ── Source Pills ── */
+    .source-filters {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+    .pill {
+      padding: 0.35rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); }
+    .pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Cards ── */
+    #positions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s, transform 0.2s;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem 1.5rem;
+      align-items: start;
+    }
+    .card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+    .card.italy-highlight {
+      border-left: 3px solid var(--italy);
+    }
+
+    .card-left {}
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      line-height: 1.4;
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    .card-title:hover { text-decoration: underline; }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+      align-items: center;
+    }
+    .meta-item {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .meta-item svg { flex-shrink: 0; }
+
+    .card-desc {
+      font-size: 0.88rem;
+      color: #4a4540;
+      line-height: 1.55;
+    }
+
+    .card-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+
+    .source-tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.65rem;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .deadline-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .deadline-tag.warn {
+      background: var(--deadline-warn-bg);
+      color: var(--deadline-warn);
+    }
+    .deadline-tag.ok {
+      background: var(--deadline-ok-bg);
+      color: var(--deadline-ok);
+    }
+    .deadline-tag.unknown {
+      background: var(--tag-bg);
+      color: var(--muted);
+    }
+
+    .italy-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      border-radius: 4px;
+      background: var(--italy-bg);
+      color: var(--italy);
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--muted);
+    }
+    .empty svg { margin-bottom: 1rem; color: var(--border); }
+    .empty h3 { font-family: 'Playfair Display', serif; margin-bottom: 0.5rem; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 4rem;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      flex: 1;
+      min-width: 120px;
+    }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+
+    @media (max-width: 600px) {
+      .card { grid-template-columns: 1fr; }
+      .card-right { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+      .container { padding: 1rem; }
+      .header-inner { padding: 1rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="site-title">🎓 PhD Tracker</div>
+      <div class="site-subtitle">Political Science · International Relations · European Studies — Italy &amp; Europe</div>
+    </div>
+    <div class="last-updated" id="last-updated">Loading...</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-num" id="stat-total">–</div>
+      <div class="stat-label">Open positions</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-italy">–</div>
+      <div class="stat-label">In Italy</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-soon">–</div>
+      <div class="stat-label">Deadline &lt; 60 days</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="search" placeholder="Search by title, institution, topic…" />
+    </div>
+    <select id="country-filter">
+      <option value="">All countries</option>
+      <option value="italy">🇮🇹 Italy</option>
+      <option value="germany">🇩🇪 Germany</option>
+      <option value="netherlands">🇳🇱 Netherlands</option>
+      <option value="france">🇫🇷 France</option>
+      <option value="belgium">🇧🇪 Belgium</option>
+      <option value="sweden">🇸🇪 Sweden</option>
+      <option value="spain">🇪🇸 Spain</option>
+      <option value="switzerland">🇨🇭 Switzerland</option>
+    </select>
+    <select id="sort-filter">
+      <option value="deadline">Sort: Deadline</option>
+      <option value="newest">Sort: Newest</option>
+      <option value="alpha">Sort: A–Z</option>
+    </select>
+    <div class="count-badge">Showing <strong id="showing-count">0</strong> positions</div>
+  </div>
+
+  <!-- Source pills -->
+  <div class="source-filters">
+    <div class="pill active" data-source="">All sources</div>
+    <div class="pill" data-source="EURAXESS">EURAXESS</div>
+    <div class="pill" data-source="Academic Positions">Academic Positions</div>
+    <div class="pill" data-source="jobs.ac.uk">jobs.ac.uk</div>
+  </div>
+
+  <!-- Results -->
+  <div id="positions-list">
+    <div class="empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 8v4l3 3"/></svg>
+      <h3>Loading positions…</h3>
+      <p>Fetching latest PhD opportunities</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Auto-updated daily via GitHub Actions · Sources: 
+  <a href="https://euraxess.ec.europa.eu/jobs/search" target="_blank">EURAXESS</a>, 
+  <a href="https://academicpositions.com/jobs/position/phd/field/political-science" target="_blank">Academic Positions</a>, 
+  <a href="https://www.jobs.ac.uk/search/politics-and-government/phd" target="_blank">jobs.ac.uk</a>
+</footer>
+
+<script>
+  let allPositions = [];
+  let activeSource = "";
+
+  // ── Load data ──────────────────────────────────────────────────────────────
+  async function loadData() {
+    try {
+      // Try relative path first (GitHub Pages), then fallback
+      // Try multiple paths for GitHub Pages compatibility
+      const dataPaths = ['../data/positions.json', './data/positions.json', '/phd-tracker/data/positions.json'];
+      let res;
+      for (const p of dataPaths) {
+        try { res = await fetch(p); if (res.ok) break; } catch(e) {}
+      }
+      if (!res || !res.ok) throw new Error('Data not found');
+      const data = await res.json();
+      allPositions = data.positions || [];
+      document.getElementById('last-updated').textContent =
+        'Updated: ' + new Date(data.last_updated).toLocaleDateString('en-GB', {
+          day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+      updateStats();
+      render();
+    } catch (e) {
+      document.getElementById('positions-list').innerHTML = `
+        <div class="empty">
+          <h3>No data yet</h3>
+          <p>Run the scraper or trigger the GitHub Action to populate positions.</p>
+        </div>`;
+    }
+  }
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  function updateStats() {
+    const total = allPositions.length;
+    const italy = allPositions.filter(p =>
+      (p.location || '').toLowerCase().includes('italy') ||
+      (p.institution || '').toLowerCase().includes('bologna') ||
+      (p.institution || '').toLowerCase().includes('milan') ||
+      (p.institution || '').toLowerCase().includes('rome') ||
+      (p.institution || '').toLowerCase().includes('eui') ||
+      (p.institution || '').toLowerCase().includes('bocconi') ||
+      (p.institution || '').toLowerCase().includes('pavia')
+    ).length;
+
+    const now = new Date();
+    const soon = allPositions.filter(p => {
+      if (!p.deadline) return false;
+      const d = new Date(p.deadline);
+      const diff = (d - now) / (1000 * 60 * 60 * 24);
+      return diff > 0 && diff <= 60;
+    }).length;
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-italy').textContent = italy;
+    document.getElementById('stat-soon').textContent = soon;
+  }
+
+  // ── Deadline helpers ───────────────────────────────────────────────────────
+  function deadlineClass(dateStr) {
+    if (!dateStr) return 'unknown';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return 'unknown';
+    const diff = (d - new Date()) / (1000 * 60 * 60 * 24);
+    if (diff < 0) return 'unknown'; // expired
+    return diff <= 60 ? 'warn' : 'ok';
+  }
+
+  function formatDeadline(dateStr) {
+    if (!dateStr) return 'No deadline';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr; // return raw text if not parseable
+    const diff = Math.ceil((d - new Date()) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return 'Closed';
+    if (diff === 0) return 'Today!';
+    if (diff <= 7) return `${diff}d left`;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function isItaly(p) {
+    const loc = (p.location + ' ' + (p.institution || '')).toLowerCase();
+    return loc.includes('italy') || loc.includes('italian') ||
+      ['bologna', 'milan', 'rome', 'florence', 'pavia', 'naples', 'turin',
+       'eui', 'bocconi', 'sapienza', 'padova', 'trento', 'venezia'].some(c => loc.includes(c));
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    const search = document.getElementById('search').value.toLowerCase();
+    const country = document.getElementById('country-filter').value.toLowerCase();
+    const sort = document.getElementById('sort-filter').value;
+
+    let filtered = allPositions.filter(p => {
+      const text = `${p.title} ${p.description} ${p.location} ${p.institution || ''}`.toLowerCase();
+      if (search && !text.includes(search)) return false;
+      if (activeSource && p.source !== activeSource) return false;
+      if (country && !(p.location || '').toLowerCase().includes(country)) return false;
+      return true;
+    });
+
+    // Sort
+    if (sort === 'deadline') {
+      filtered.sort((a, b) => {
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline) - new Date(b.deadline);
+      });
+    } else if (sort === 'newest') {
+      filtered.sort((a, b) => new Date(b.scraped_at) - new Date(a.scraped_at));
+    } else {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    document.getElementById('showing-count').textContent = filtered.length;
+
+    const list = document.getElementById('positions-list');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <h3>No results found</h3>
+          <p>Try adjusting your search or filters</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(p => {
+      const italy = isItaly(p);
+      const dlClass = deadlineClass(p.deadline);
+      const dlText = formatDeadline(p.deadline);
+
+      return `
+        <div class="card ${italy ? 'italy-highlight' : ''}">
+          <div class="card-left">
+            <a class="card-title" href="${p.url}" target="_blank" rel="noopener">${escHtml(p.title)}</a>
+            <div class="card-meta">
+              ${p.location ? `
+                <span class="meta-item">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  ${escHtml(p.location)}
+                </span>` : ''}
+              ${p.institution ? `
+                <span class="meta-item">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  ${escHtml(p.institution)}
+                </span>` : ''}
+            </div>
+            ${p.description ? `<div class="card-desc">${escHtml(p.description)}${p.description.length >= 300 ? '…' : ''}</div>` : ''}
+          </div>
+          <div class="card-right">
+            <span class="source-tag">${escHtml(p.source)}</span>
+            <span class="deadline-tag ${dlClass}">⏱ ${dlText}</span>
+            ${italy ? '<span class="italy-badge">🇮🇹 Italy</span>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────────
+  document.getElementById('search').addEventListener('input', render);
+  document.getElementById('country-filter').addEventListener('change', render);
+  document.getElementById('sort-filter').addEventListener('change', render);
+
+  document.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      activeSource = pill.dataset.source;
+      render();
+    });
+  });
+
+  loadData();
+</script>
+</body>
+</html>
