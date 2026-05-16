@@ -426,13 +426,7 @@
   async function loadData() {
     try {
       // Try relative path first (GitHub Pages), then fallback
-      // Try multiple paths for GitHub Pages compatibility
-      const dataPaths = ['../data/positions.json', './data/positions.json', '/phd-tracker/data/positions.json'];
-      let res;
-      for (const p of dataPaths) {
-        try { res = await fetch(p); if (res.ok) break; } catch(e) {}
-      }
-      if (!res || !res.ok) throw new Error('Data not found');
+      const res = await fetch('./data.json');
       const data = await res.json();
       allPositions = data.positions || [];
       document.getElementById('last-updated').textContent =

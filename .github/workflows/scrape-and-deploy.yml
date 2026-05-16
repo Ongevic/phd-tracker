@@ -40,13 +40,13 @@ jobs:
       - name: Show output (debug)
         run: |
           echo "=== positions.json preview ==="
-          head -50 data/positions.json || echo "File not found or empty"
+          head -50 docs/data.json || echo "File not found or empty"
 
       - name: Commit updated data
         run: |
           git config --global user.name "PhD Tracker Bot"
           git config --global user.email "bot@github-actions"
-          git add data/positions.json
+          git add docs/data.json data/positions.json
           git diff --cached --quiet || git commit -m "🤖 Update PhD positions [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push
         env:

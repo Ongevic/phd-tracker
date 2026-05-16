@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
-OUTPUT_FILE = REPO_ROOT / "data" / "positions.json"
+OUTPUT_FILE = REPO_ROOT / "docs" / "data.json"
 
 KEYWORDS = [
     "political science","international relations","global governance",
@@ -197,7 +197,282 @@ def scrape_jobsacuk(page):
     print(f"  → {len(results)} relevant")
     return results
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+def scrape_eui(page):
+    print("\n→ EUI Florence")
+    results = []
+
+    try:
+        page.goto("https://www.eui.eu/apply", wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(3000)
+
+        # Dismiss cookie banner if present
+        try:
+            page.click("text=Decline Non Essential", timeout=3000)
+        except: pass
+
+        # Find all doctoral programme links
+        prog_links = page.evaluate('''() =>
+            [...document.querySelectorAll("a")]
+            .filter(a => a.href.includes("apply?id=doctoral") || a.href.includes("apply?id=marie"))
+            .map(a => ({text: a.innerText.trim(), href: a.href}))
+        ''')
+
+        relevant_ids = [
+            "doctoral-programme-in-political-and-social-sciences",
+            "doctoral-programme-in-law",
+            "doctoral-programme-in-history-and-civilisation",
+        ]
+
+        for prog in prog_links:
+            href = prog['href']
+            prog_id = href.split("id=")[-1] if "id=" in href else ""
+            if not any(r in prog_id for r in relevant_ids):
+                continue
+
+            try:
+                page.goto(href, wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(2000)
+
+                body = page.inner_text("body")
+
+                # Extract deadline
+                deadline = ""
+                import re
+                dl_match = re.search(r'deadline[^\n]*?(\d{1,2}\s+\w+\s+\d{4})', body, re.IGNORECASE)
+                if dl_match:
+                    deadline = dl_match.group(1)
+                else:
+                    dl_match2 = re.search(r'(\d{1,2}/\d{1,2}/\d{4})', body)
+                    if dl_match2:
+                        deadline = dl_match2.group(1)
+
+                # Extract start date
+                start_match = re.search(r'Programme Start Date\s*\n\s*(\S[^\n]+)', body)
+                start = start_match.group(1).strip() if start_match else ""
+
+                # Get description snippet
+                desc_match = re.search(r'Programme Description\s*\n(.{100,400})', body, re.DOTALL)
+                desc = desc_match.group(1).strip()[:300] if desc_match else ""
+
+                title = prog['text'].strip() or f"EUI {prog_id.replace('-',' ').title()}"
+
+                results.append(entry(
+                    title, href,
+                    institution="European University Institute (EUI)",
+                    location="Florence, Italy",
+                    deadline=deadline or (f"Starts {start}" if start else ""),
+                    description=desc,
+                    source="EUI Florence"
+                ))
+                time.sleep(1)
+
+            except Exception as e:
+                print(f"  ✗ {prog_id}: {e}")
+
+    except Exception as e:
+        print(f"  ✗ {e}")
+
+    print(f"  → {len(results)} programmes")
+    return results
+
+
+# ── Bocconi University ────────────────────────────────────────────────────────
+
+def scrape_bocconi(page):
+    print("\n→ Bocconi University")
+    results = []
+
+    relevant = [
+        ("PhD in Social and Political Science", "https://www.unibocconi.it/en/programs/phd/phd-social-and-political-science"),
+        ("PhD in Legal Studies", "https://www.unibocconi.it/en/programs/phd/phd-legal-studies"),
+        ("PhD in Economics and Finance", "https://www.unibocconi.it/en/programs/phd/phd-economics-and-finance"),
+    ]
+
+    # Also get admissions page for deadline
+    deadline_global = ""
+    try:
+        page.goto("https://www.unibocconi.it/en/programs/phd/admissions", wait_until="domcontentloaded", timeout=20000)
+        page.wait_for_timeout(2000)
+        body = page.inner_text("body")
+        import re
+        dl = re.search(r'(\d{1,2}\s+\w+\s+\d{4}|\w+\s+\d{1,2},?\s+\d{4})', body)
+        if dl:
+            deadline_global = dl.group(1)
+    except: pass
+
+    for title, url in relevant:
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            page.wait_for_timeout(2000)
+            body = page.inner_text("body")
+
+            # Extract key info
+            import re
+            desc_match = re.search(r'(Four-year|Three-year|PhD Program|At a glance)(.{200,500})', body, re.DOTALL)
+            desc = desc_match.group(0).strip()[:300] if desc_match else ""
+
+            results.append(entry(
+                title, url,
+                institution="Bocconi University",
+                location="Milan, Italy",
+                deadline=deadline_global,
+                description=desc,
+                source="Bocconi University"
+            ))
+            time.sleep(1)
+
+        except Exception as e:
+            print(f"  ✗ {title}: {e}")
+
+    print(f"  → {len(results)} programmes")
+    return results
+
+
+# ── LUISS Rome ────────────────────────────────────────────────────────────────
+
+def scrape_luiss(page):
+    print("\n→ LUISS Rome")
+    results = []
+
+    try:
+        page.goto("https://phd.luiss.it/phd-programs/", wait_until="domcontentloaded", timeout=20000)
+        page.wait_for_timeout(2000)
+
+        # Get all programme links
+        prog_links = page.evaluate('''() =>
+            [...document.querySelectorAll("a")]
+            .filter(a => a.href.includes("phd.luiss.it") && a.href.length > 30 &&
+                !["phd-programs","open-calls","ammissione","procedure","services",
+                  "contact","informazioni","faq","external"].some(x => a.href.includes(x)) &&
+                a.innerText.trim().length > 4)
+            .map(a => ({text: a.innerText.trim(), href: a.href}))
+        ''')
+
+        # Also check open calls
+        page.goto("https://phd.luiss.it/open-calls/", wait_until="domcontentloaded", timeout=20000)
+        page.wait_for_timeout(2000)
+        open_calls_text = page.inner_text("body")
+
+        import re
+        has_open = "no open calls" not in open_calls_text.lower()
+        call_links = []
+        if has_open:
+            call_links = page.evaluate('''() =>
+                [...document.querySelectorAll(".entry-content a, article a, main a")]
+                .map(a => ({text: a.innerText.trim(), href: a.href}))
+                .filter(l => l.href.includes("luiss") && l.text.length > 5)
+            ''')
+
+        relevant_progs = ["politics", "law", "political", "international", "economics", "government"]
+
+        # Create entries for relevant programmes
+        seen = set()
+        for prog in (prog_links + call_links):
+            text = prog['text'].lower()
+            href = prog['href']
+            if href in seen: continue
+            if not any(k in text or k in href.lower() for k in relevant_progs): continue
+            seen.add(href)
+
+            results.append(entry(
+                prog['text'], href,
+                institution="LUISS Guido Carli",
+                location="Rome, Italy",
+                deadline="See open calls" if has_open else "No open calls currently",
+                source="LUISS Rome"
+            ))
+
+    except Exception as e:
+        print(f"  ✗ {e}")
+
+    # Always add LUISS Politics programme as a standing entry
+    if not any("politics" in r['title'].lower() for r in results):
+        results.append(entry(
+            "PhD in Politics",
+            "https://phd.luiss.it/phd-programs/",
+            institution="LUISS Guido Carli",
+            location="Rome, Italy",
+            deadline="Check site for open calls",
+            description="PhD in Politics at LUISS Rome. Research areas: comparative politics, international relations, EU politics.",
+            source="LUISS Rome"
+        ))
+
+    print(f"  → {len(results)} programmes")
+    return results
+
+
+# ── Bologna University ────────────────────────────────────────────────────────
+
+def scrape_bologna(page):
+    print("\n→ University of Bologna")
+    results = []
+
+    RELEVANT_KEYWORDS = [
+        "political", "international", "law", "governance",
+        "european", "global", "society", "social", "history",
+        "economics", "migration", "peace", "conflict",
+    ]
+
+    # Bologna lists all PhD programmes - find the current cycle page
+    urls_to_try = [
+        "https://www.unibo.it/en/study/phd-professional-masters-specialisation-schools-and-other-programmes/phd/phd-programmes-2025-26",
+        "https://www.unibo.it/en/study/phd-professional-masters-specialisation-schools-and-other-programmes/phd/phd-programmes-2024-25",
+    ]
+
+    for list_url in urls_to_try:
+        try:
+            page.goto(list_url, wait_until="domcontentloaded", timeout=25000)
+            page.wait_for_timeout(3000)
+
+            # Accept cookies if needed
+            try:
+                page.click("text=Accept All", timeout=2000)
+                page.wait_for_timeout(1000)
+            except: pass
+
+            prog_links = page.evaluate('''() =>
+                [...document.querySelectorAll("a")]
+                .filter(a => a.href.includes("unibo.it") &&
+                    (a.href.includes("phd-programme") || a.href.includes("dottorat")) &&
+                    a.innerText.trim().length > 5)
+                .map(a => ({text: a.innerText.trim(), href: a.href}))
+            ''')
+
+            if not prog_links:
+                continue
+
+            print(f"  Found {len(prog_links)} programmes at {list_url}")
+
+            import re
+            for prog in prog_links:
+                text_lower = prog['text'].lower()
+                if not any(k in text_lower for k in RELEVANT_KEYWORDS):
+                    continue
+
+                results.append(entry(
+                    prog['text'], prog['href'],
+                    institution="University of Bologna",
+                    location="Bologna, Italy",
+                    source="University of Bologna"
+                ))
+
+            if results:
+                break
+
+        except Exception as e:
+            print(f"  ✗ {list_url}: {e}")
+
+    if not results:
+        # Fallback: add known relevant PhD programmes
+        known = [
+            ("PhD in Political and Social Sciences", "https://www.unibo.it/en/study/phd-professional-masters-specialisation-schools-and-other-programmes/phd"),
+            ("PhD in International Studies", "https://www.unibo.it/en/study/phd-professional-masters-specialisation-schools-and-other-programmes/phd"),
+        ]
+        for title, url in known:
+            results.append(entry(title, url, institution="University of Bologna", location="Bologna, Italy", source="University of Bologna"))
+
+    print(f"  → {len(results)} relevant programmes")
+    return results
 
 def dedupe(positions):
     seen, out = set(), []
@@ -230,7 +505,7 @@ def main():
                 viewport={"width":1280,"height":900})
             pg = ctx.new_page()
 
-            for fn in [scrape_euraxess, scrape_jobsacuk]:
+            for fn in [scrape_euraxess, scrape_jobsacuk, scrape_eui, scrape_bocconi, scrape_luiss, scrape_bologna]:
                 try:
                     all_pos += fn(pg)
                 except Exception as e:
@@ -259,6 +534,14 @@ def main():
     OUTPUT_FILE.write_text(json.dumps(out, indent=2, ensure_ascii=False))
     print(f"✅ Saved {len(all_pos)} positions")
     sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+
+
+# ── EUI Florence ──────────────────────────────────────────────────────────────
+# Scrapes the EUI apply page for doctoral programmes
+
 
 if __name__ == "__main__":
     main()
